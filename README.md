@@ -29,20 +29,20 @@ The package is not on PyPI; it is installed straight from GitHub.
 
 ```bash
 # latest
-pip install "git+https://github.com/andhit-r/odoo-yaml-test.git@19.0#egg=odoo-yaml-test"
+pip install "git+https://github.com/andhit-r/odoo-yaml-test.git@20.0#egg=odoo-yaml-test"
 
 # pinned to a release
-pip install "git+https://github.com/andhit-r/odoo-yaml-test.git@19.0-v0.4.0#egg=odoo-yaml-test"
+pip install "git+https://github.com/andhit-r/odoo-yaml-test.git@20.0-v0.1.0#egg=odoo-yaml-test"
 ```
 
 Released versions are listed on the
 [Releases page](https://github.com/andhit-r/odoo-yaml-test/releases).
 
-The package targets Python 3.10+. This library targets **Odoo 19.0** and is tested
-only against it — including one CI job that runs against a real Odoo 19 registry. The
+The package targets Python 3.12+. This library targets **Odoo 20.0** and is tested
+only against it — including one CI job that runs against a real Odoo 20 registry. The
 public ORM API this library uses is *not* stable across series, so each series gets its
 own branch: `flush()` and `invalidate_cache()` were removed in Odoo 17, and this branch
-calls 19's `env.flush_all()` / `invalidate_recordset()` directly. For Odoo 14.0 use the
+calls 20's `env.flush_all()` / `invalidate_recordset()` directly. For Odoo 14.0 use the
 `master` branch instead. See `BRANCHING.md`.
 
 ## Quickstart
@@ -266,7 +266,7 @@ scenarios:
         method: "action_done"
 ```
 
-`ir.model.access` rows are generated automatically, so `as_user:` steps work
+`ir.access` rows are generated automatically, so `as_user:` steps work
 without hand-written security. No extra dependency is required.
 
 > Keep the fixture module out of `tests/__init__.py`. Odoo builds every model

@@ -15,13 +15,13 @@ scenarios are littered with manual cache-invalidation steps (non-stored
 compute fields that Odoo does not invalidate on a state change). That is
 what lets us prove the auto-refresh feature actually fires.
 
-The fakes speak the **Odoo 19.0** cache API — ``env.flush_all()`` and
+The fakes speak the **Odoo 20.0** cache API — ``env.flush_all()`` and
 ``invalidate_recordset()`` — because that is what this branch's ``case.py``
 calls. Keeping them aligned with the branch's target series is the point: a
 fake that answered to the 14.0 names (``flush``/``invalidate_cache``) would
 be describing an ORM that does not exist here, and would keep passing while
 the real thing broke. These fakes can never prove the library works against
-a real Odoo 19 — only the ``integration`` CI job can (see
+a real Odoo 20 — only the ``integration`` CI job can (see
 ``tests_integration/``).
 """
 
@@ -99,7 +99,7 @@ class FakeRecord:
         clone.env = env
         return clone
 
-    # -- cache plumbing, mirroring Odoo 19's public API -----------------
+    # -- cache plumbing, mirroring Odoo 20's public API -----------------
 
     def invalidate_recordset(self, fnames=None, flush=True) -> None:
         """Mirror ``odoo/orm/models.py::invalidate_recordset`` (19.0).
@@ -268,7 +268,7 @@ class FakeEnv:
     def __getitem__(self, model_name: str) -> FakeModel:
         return FakeModel(model_name, self)
 
-    # -- cache plumbing, mirroring Odoo 19's Environment ----------------
+    # -- cache plumbing, mirroring Odoo 20's Environment ----------------
 
     def flush_all(self) -> None:
         """Mirror ``odoo/orm/environments.py::flush_all`` (19.0).
@@ -1944,7 +1944,7 @@ class FakeAclEnv(FakeEnv):
     def __getitem__(self, model_name: str) -> Any:
         if model_name == "ir.model":
             return _FakeIrModel(self)
-        if model_name == "ir.model.access":
+        if model_name == "ir.access":
             return _FakeIrModelAccess(self)
         return FakeModel(model_name, self)
 
@@ -1980,7 +1980,7 @@ class _FakeIrModelAccess:
 
     def create(self, values: dict[str, Any]) -> Any:
         self.env.acl_rows.append(values)
-        return FakeRecord(FakeModel("ir.model.access", self.env), values)
+        return FakeRecord(FakeModel("ir.access", self.env), values)
 
 
 class FakeMixinClass:
@@ -2149,7 +2149,7 @@ class TestFakeModelsUnloading:
         ``_setup_models__`` internally calls ``env.invalidate_all() ->
         flush_all()``, which looks every pending model up in the registry.
         Deleting first leaves the env holding a name the registry no longer
-        has. Against real Odoo 19 that is a KeyError, not a soft failure.
+        has. Against real Odoo 20 that is a KeyError, not a soft failure.
         """
         case = self._load(tmp_path, {})
         case.env.registry.calls.clear()
@@ -2214,8 +2214,7 @@ class TestFakeModelsAcl:
             _run(case, path)
         assert len(case.env.acl_rows) == 2
         for row in case.env.acl_rows:
-            assert row["perm_read"] and row["perm_write"]
-            assert row["perm_create"] and row["perm_unlink"]
+            assert row["operation"] == "crud"
 
     def test_acl_false_creates_nothing(self, tmp_path: Path) -> None:
         path = _write_yaml(

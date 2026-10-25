@@ -7,7 +7,7 @@ from odoo_yaml_test import YamlTransactionCase
 
 @tagged("post_install", "-at_install")
 class TestFakeModelsProbe(YamlTransactionCase):
-    """Proves ``fake_models:`` against a real Odoo 19 registry.
+    """Proves ``fake_models:`` against a real Odoo 20 registry.
 
     The unit tests in ``tests/`` drive a fake registry and can only prove the
     call sequence. Only this job can prove that Odoo actually builds the

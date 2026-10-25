@@ -7,6 +7,7 @@ series' ORM API directly and is tested only against it.
 |---|---|---|---|
 | `master` | 14.0 | active | `git+https://github.com/andhit-r/odoo-yaml-test.git@master` |
 | `19.0` | 19.0 | active | `git+https://github.com/andhit-r/odoo-yaml-test.git@19.0` |
+| `20.0` | 20.0 | active | `git+https://github.com/andhit-r/odoo-yaml-test.git@20.0` |
 
 ## `master` is the 14.0 branch and is never renamed
 

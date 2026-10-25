@@ -84,7 +84,7 @@ fake_models:
 | Key       | Default                | Meaning                                              |
 | --------- | ---------------------- | ---------------------------------------------------- |
 | `classes` | *(required)*           | `"module.path:ClassName"` references, in load order   |
-| `acl`     | `true`                 | Create full RWCU `ir.model.access` rows               |
+| `acl`     | `true`                 | Create full CRUD `ir.access` rows               |
 | `groups`  | `["base.group_user"]`  | Groups the generated ACL is granted to                |
 | `addon`   | derived from test class | Addon the models are attributed to                   |
 
@@ -98,7 +98,7 @@ unaffected: rows in a fake table roll back with the test transaction like any
 other. Because unloading is per method, one test method may load `fake_models:`
 from only one file; a second raises rather than silently overwriting.
 
-**ACL.** A fake model has no `security/ir.model.access.csv`. The default env is
+**ACL.** A fake model has no `security/ir.access.csv`. The default env is
 superuser and would never notice, but any `as_user:` step would fail with an
 `AccessError` that says nothing about what you are actually testing. Set
 `acl: false` if you want to create the rows yourself.

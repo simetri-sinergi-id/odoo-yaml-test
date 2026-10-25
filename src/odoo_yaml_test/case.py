@@ -126,29 +126,29 @@ def _error_class(name: str) -> Type[BaseException]:
 
 
 def _add_to_registry() -> Any:
-    """Return Odoo 19's ``add_to_registry``, lazily.
+    """Return Odoo 20's ``add_to_registry``, lazily.
 
     Lazy for the same reason as :func:`_error_class`: Odoo stays an optional
     import so the package remains usable (and lintable) without it.
 
-    This branch targets Odoo 19.0 and calls that series' API directly. The 14.0
+    This branch targets Odoo 20.0 and calls that series' API directly. The 14.0
     equivalent — ``BaseModel._build_model(pool, cr)`` — was removed in 19.0, and
     probing for either with ``getattr`` would reintroduce exactly the silent
     no-op that ``_refresh()`` once became. If the API is missing, raise.
     """
     try:
         from odoo.orm.model_classes import add_to_registry
-    except ImportError as exc:  # pragma: no cover - only without Odoo 19
+    except ImportError as exc:  # pragma: no cover - only without Odoo 20
         raise YamlConfigurationError(
             "'fake_models:' requires odoo.orm.model_classes.add_to_registry, "
-            "which is Odoo 19.0+. On Odoo 14.0 use the 'master' branch of "
+            "which is Odoo 20.0+. On Odoo 14.0 use the 'master' branch of "
             "odoo-yaml-test instead."
         ) from exc
     return add_to_registry
 
 
 def _module_to_models() -> Any:
-    """Return Odoo 19's ``MetaModel._module_to_models__`` mapping, lazily.
+    """Return Odoo 20's ``MetaModel._module_to_models__`` mapping, lazily.
 
     Importing a model class registers it here, keyed by ``_module``. A fake
     model must be removed again on teardown, otherwise the next
@@ -156,9 +156,9 @@ def _module_to_models() -> Any:
     """
     try:
         from odoo.orm.models import MetaModel
-    except ImportError as exc:  # pragma: no cover - only without Odoo 19
+    except ImportError as exc:  # pragma: no cover - only without Odoo 20
         raise YamlConfigurationError(
-            "'fake_models:' requires odoo.orm.models.MetaModel (Odoo 19.0+)"
+            "'fake_models:' requires odoo.orm.models.MetaModel (Odoo 20.0+)"
         ) from exc
     return MetaModel._module_to_models__
 
@@ -416,21 +416,21 @@ class YamlTransactionCase(_TransactionCase):  # type: ignore[misc]
     def _grant_fake_model_access(
         self, model_names: List[str], groups: List[str], source: str
     ) -> None:
-        """Create full RWCU ``ir.model.access`` rows for the fake models.
+        """Create full CRUD ``ir.access`` rows for the fake models.
 
-        A fake model has no ``security/ir.model.access.csv``. The default env is
+        A fake model has no ``security/ir.access.csv``. The default env is
         superuser and would never notice, but any ``as_user:`` step would fail
         with an AccessError that says nothing about the subject under test.
         """
         ir_model = self.env["ir.model"].sudo()
-        ir_access = self.env["ir.model.access"].sudo()
+        ir_access = self.env["ir.access"].sudo()
         for model_name in model_names:
             record = ir_model.search([("model", "=", model_name)], limit=1)
             if not record:
                 raise YamlStepError(
                     f"'fake_models' in {source}: model {model_name!r} was loaded but "
                     f"has no ir.model row, so its ACL cannot be created. Set "
-                    f"'fake_models.acl: false' and create the ir.model.access "
+                    f"'fake_models.acl: false' and create the ir.access "
                     f"records yourself in a setup step."
                 )
             for group_xml_id in groups:
@@ -441,10 +441,7 @@ class YamlTransactionCase(_TransactionCase):  # type: ignore[misc]
                         ),
                         "model_id": record.id,
                         "group_id": self.env.ref(group_xml_id).id,
-                        "perm_read": True,
-                        "perm_write": True,
-                        "perm_create": True,
-                        "perm_unlink": True,
+                        "operation": "crud",
                     }
                 )
 
@@ -453,7 +450,7 @@ class YamlTransactionCase(_TransactionCase):  # type: ignore[misc]
     def _load_fake_models(self, classes: List[Any], addon: str) -> List[str]:
         """Add *classes* to the live registry and create their tables.
 
-        Odoo 19.0 API. ``_setup_models__(cr, [])`` performs an incremental
+        Odoo 20.0 API. ``_setup_models__(cr, [])`` performs an incremental
         setup — verified sufficient for brand-new models, not only for the
         model *extensions* the core tests use it for.
         """
@@ -977,7 +974,7 @@ class YamlTransactionCase(_TransactionCase):  # type: ignore[misc]
         ``invalidate_recordset()`` is scoped by construction, so the scoping is
         no longer something this method has to arrange.
 
-        This branch targets Odoo 19.0 and calls its ORM API directly. The 14.0
+        This branch targets Odoo 20.0 and calls its ORM API directly. The 14.0
         names (``flush``/``invalidate_cache``) were removed in 17.0; probing for
         them with ``getattr`` and silently doing nothing is what turned this
         method into a no-op on newer series. If the API is ever missing, let the

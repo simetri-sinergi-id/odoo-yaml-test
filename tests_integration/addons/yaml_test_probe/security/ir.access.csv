@@ -1,0 +1,2 @@
+id,name,model_id,group_id/id,operation,domain
+access_yaml_test_probe,yaml.test.probe all,yaml.test.probe,base.group_user,crud,
