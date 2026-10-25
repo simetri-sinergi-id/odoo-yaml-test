@@ -28,3 +28,16 @@ class TestFakeModelsProbe(YamlTransactionCase):
         """
         self.assertNotIn("yaml.test.fake.consumer", self.env.registry)
         self.assertNotIn("yaml.test.fake.mixin", self.env.registry)
+
+    def test_unflushed_write_does_not_break_the_teardown(self):
+        """Guards the teardown against a dirty field of the removed model.
+
+        The test ends with a ``write()`` that was never flushed. Before the fix
+        the closing ``_setup_models__`` raised ``KeyError`` inside ``flush_all``
+        and logged a WARNING, which ``oca_checklog_odoo`` turns into a red
+        build although every test passed. The teardown runs after this body,
+        so the proof is a clean log, not an assertion here.
+        """
+        self.run_yaml_scenario("scenarios/fake_models_loader.yaml")
+        record = self.env["yaml.test.fake.consumer"].create({"name": "pending"})
+        record.write({"name": "dirty"})

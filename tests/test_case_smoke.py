@@ -1931,11 +1931,27 @@ class FakeRegistry:
         self.init_args.append((list(names), dict(context)))
 
 
+class FakePendingField:
+    """Stands in for an ORM ``Field``: only ``model_name`` is read."""
+
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
+
+
+class FakeTransaction:
+    """Stands in for ``env.transaction``: the two maps keyed by field."""
+
+    def __init__(self) -> None:
+        self.field_dirty: dict[Any, Any] = {}
+        self.tocompute: dict[Any, Any] = {}
+
+
 class FakeAclEnv(FakeEnv):
     """A FakeEnv that owns a registry and answers ir.model lookups."""
 
     def __init__(self) -> None:
         super().__init__()
+        self.transaction = FakeTransaction()
         self.registry = FakeRegistry()
         self.acl_rows: list[dict[str, Any]] = []
         self.invalidate_calls: list[int] = []
@@ -2159,6 +2175,41 @@ class TestFakeModelsUnloading:
 
         assert case.env.invalidate_calls == [0], "invalidate_all must precede every del"
         assert case.env.registry.calls == ["del:fake.consumer", "del:fake.mixin", "setup"]
+
+    def test_pending_work_of_fake_models_is_discarded(self, tmp_path: Path) -> None:
+        """An unflushed write must not outlive the model it was written to.
+
+        ``invalidate_all(flush=False)`` leaves ``field_dirty`` and ``tocompute``
+        alone, so ``_setup_models__`` -> ``flush_all()`` would look the removed
+        model up and die with KeyError. Only entries of the fake models go;
+        a base model's pending work belongs to the test's own transaction.
+        """
+        case = self._load(tmp_path, {})
+        transaction = case.env.transaction
+        fake = FakePendingField("fake.consumer")
+        other = FakePendingField("res.partner")
+        transaction.field_dirty.update({fake: {1}, other: {2}})
+        transaction.tocompute.update({fake: {1}, other: {2}})
+
+        self._run_cleanup(case, {})
+
+        assert list(transaction.field_dirty) == [other]
+        assert list(transaction.tocompute) == [other]
+
+    def test_pending_work_is_discarded_before_invalidate(self, tmp_path: Path) -> None:
+        """Order: discard, then invalidate, then delete from the registry."""
+        case = self._load(tmp_path, {})
+        seen: list[int] = []
+        original = case.env.invalidate_all
+
+        def spy(flush: bool = True) -> None:
+            seen.append(len(case.env.transaction.field_dirty))
+            original(flush=flush)
+
+        case.env.transaction.field_dirty[FakePendingField("fake.consumer")] = {1}
+        case.env.invalidate_all = spy  # type: ignore[method-assign]
+        self._run_cleanup(case, {})
+        assert seen == [0]
 
     def test_invalidate_does_not_flush(self, tmp_path: Path) -> None:
         """Flushing needs a healthy cursor; teardown must not require one.

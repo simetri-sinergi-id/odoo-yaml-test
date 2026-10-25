@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`fake_models:` teardown no longer warns when a test ends with an unflushed `write()`.**
+  `_unload_fake_models` called `env.invalidate_all(flush=False)`, which only empties
+  `field_data`; `transaction.field_dirty` and `transaction.tocompute` survive it. A dirty
+  field of the removed model made the closing `_setup_models__` -> `flush_all()` raise
+  `KeyError`, logged as `fake_models: could not re-setup the registry`. That WARNING
+  fails `oca_checklog_odoo`, so the build went red although every test passed. The
+  entries of the fake models are now dropped before the registry is touched.
+
 ### Added
 - First `20.0` branch, based on `19.0` 0.5.1. Odoo 20 replaced `ir.model.access` with
   `ir.access` (one `operation` selection such as `crud` instead of four `perm_*` booleans),

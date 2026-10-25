@@ -1,0 +1,16 @@
+fake_models:
+  classes:
+    - "odoo.addons.yaml_test_probe.tests.fake_models:YamlTestFakeMixin"
+    - "odoo.addons.yaml_test_probe.tests.fake_models:YamlTestFakeConsumer"
+
+# Loads the fake models and does nothing else. A Python test uses it when it
+# needs the throwaway model but wants to drive the ORM itself.
+
+scenarios:
+  - name: "load the fake models only"
+    steps:
+      - step: "Search the fake model"
+        action: "search"
+        model: "yaml.test.fake.consumer"
+        domain: []
+        save_as: "found"

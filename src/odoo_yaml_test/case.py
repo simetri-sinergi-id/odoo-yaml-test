@@ -468,7 +468,18 @@ class YamlTransactionCase(_TransactionCase):  # type: ignore[misc]
 
         Order matters, and the reason is not obvious:
 
-        ``invalidate_all()`` must come *first*. ``_setup_models__`` itself calls
+        Pending work on the fake models is discarded *before* anything else.
+        ``invalidate_all(flush=False)`` only empties ``field_data``; it leaves
+        ``transaction.field_dirty`` and ``transaction.tocompute`` alone (only
+        ``Transaction.clear()`` resets those). A scenario or test that ends
+        with an unflushed ``write()`` therefore leaves a dirty field of a model
+        that is about to disappear, and the closing ``_setup_models__`` then
+        dies in ``flush_all()`` with ``KeyError``. Dropping those entries is
+        what the no-flush rule already intends: the values were headed for a
+        table that is being discarded.
+
+        ``invalidate_all()`` must come *first* among the registry mutations.
+        ``_setup_models__`` itself calls
         ``env.invalidate_all() -> flush_all()``, which iterates the models with
         pending changes and looks each one up in the registry. Deleting first
         leaves the env holding a name the registry no longer has, and the
@@ -501,8 +512,10 @@ class YamlTransactionCase(_TransactionCase):  # type: ignore[misc]
             return
         registry = env.registry
 
+        fake_names = frozenset(registry.models) - baseline
+        self._discard_pending_work(env, fake_names)
         env.invalidate_all(flush=False)
-        for name in sorted(frozenset(registry.models) - baseline):
+        for name in sorted(fake_names):
             del registry[name]
 
         module_to_models = _module_to_models()
@@ -523,6 +536,19 @@ class YamlTransactionCase(_TransactionCase):  # type: ignore[misc]
                 type(exc).__name__,
                 exc,
             )
+
+    @staticmethod
+    def _discard_pending_work(env: Any, model_names: FrozenSet[str]) -> None:
+        """Drop dirty-field and to-compute entries owned by *model_names*.
+
+        Odoo 20 keeps both maps on ``env.transaction`` keyed by field. Entries
+        of other models are left untouched: their pending writes still belong
+        to the test's own transaction.
+        """
+        transaction = env.transaction
+        for pending in (transaction.field_dirty, transaction.tocompute):
+            for field in [f for f in pending if f.model_name in model_names]:
+                del pending[field]
 
     @staticmethod
     def _step_context(
